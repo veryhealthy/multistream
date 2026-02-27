@@ -7,12 +7,12 @@ export function createUserWithGoogle(
     picture: string,
     accessToken: string,
     expiresAt: number,
-): User {
+) {
     const row = db
         .query(
-            "INSERT INTO user(google_id, google_email, name, picture, google_access_token, google_token_expires_at) VALUES (?, ?, ?, ?, ?, ?) RETURNING id",
+            "INSERT INTO user(main, google_id, google_email, name, picture, google_access_token, google_token_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id",
         )
-        .get(googleId, email, name, picture, accessToken, expiresAt) as { id: number } | null;
+        .get("GOOGLE", googleId, email, name, picture, accessToken, expiresAt) as UserRow | null;
 
     if (row === null) {
         throw new Error("Failed to create user");
@@ -20,11 +20,6 @@ export function createUserWithGoogle(
 
     return {
         id: row.id,
-        email,
-        name,
-        picture,
-        googleAccessToken: accessToken,
-        googleTokenExpiresAt: expiresAt,
     };
 }
 
@@ -36,12 +31,12 @@ export function createUserWithTwitch(
     accessToken: string,
     refreshToken: string,
     expiresAt: number,
-): User {
+) {
     const row = db
         .query(
-            "INSERT INTO user (twitch_id, twitch_email, name, picture, twitch_access_token, twitch_refresh_token, twitch_token_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id",
+            "INSERT INTO user (main, twitch_id, twitch_email, name, picture, twitch_access_token, twitch_refresh_token, twitch_token_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
         )
-        .get(twitchId, email, name, picture, accessToken, refreshToken, expiresAt) as { id: number } | null;
+        .get("TWITCH", twitchId, email, name, picture, accessToken, refreshToken, expiresAt) as UserRow | null;
 
     if (row === null) {
         throw new Error("Failed to create user");
@@ -49,12 +44,6 @@ export function createUserWithTwitch(
 
     return {
         id: row.id,
-        email,
-        name,
-        picture,
-        twitchAccessToken: accessToken,
-        twitchRefreshToken: refreshToken,
-        twitchTokenExpiresAt: expiresAt,
     };
 }
 
@@ -66,12 +55,12 @@ export function createUserWithKick(
     accessToken: string,
     refreshToken: string,
     expiresAt: number,
-): User {
+) {
     const row = db
         .query(
-            "INSERT INTO user (kick_id, kick_email, name, picture, kick_access_token, kick_refresh_token, kick_token_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id",
+            "INSERT INTO user (main, kick_id, kick_email, name, picture, kick_access_token, kick_refresh_token, kick_token_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
         )
-        .get(kickId, email, name, picture, accessToken, refreshToken, expiresAt) as { id: number } | null;
+        .get("KICK", kickId, email, name, picture, accessToken, refreshToken, expiresAt) as { id: number } | null;
 
     if (row === null) {
         throw new Error("Failed to create user");
@@ -79,64 +68,52 @@ export function createUserWithKick(
 
     return {
         id: row.id,
-        kickEmail: email,
-        name,
-        picture,
-        kickAccessToken: accessToken,
-        kickRefreshToken: refreshToken,
-        kickTokenExpiresAt: expiresAt,
     };
 }
 
-export function getGoogleUser(email: string): { id: number } | null {
+export function checkIfGoogleHasMainAccount(googleId: string): { id: number } | null {
     const row = db
         .query(
             `
-        SELECT
-            id
-        FROM user
-        WHERE google_email = ?
-        `,
+            SELECT id
+            FROM user
+            WHERE main = :main
+            AND google_id = :googleId
+            `,
         )
-        .get(email) as UserRow | null;
-    if (row === null) {
-        return null;
-    }
-    return { id: row.id };
+        .get({ main: "GOOGLE", googleId }) as UserRow | null;
+
+    return row ? { id: row.id } : null;
 }
 
-export function getTwitchUser(email: string): { id: number } | null {
+export function checkIfTwitchHasMainAccount(twitchId: string): { id: number } | null {
     const row = db
         .query(
             `
-        SELECT
-            id
-        FROM user
-        WHERE twitch_email = ?
-        `,
+            SELECT id
+            FROM user
+            WHERE main = :main
+            AND google_id = :twitchId
+            `,
         )
-        .get(email) as UserRow | null;
-    if (row === null) {
-        return null;
-    }
-    return { id: row.id };
+        .get({ main: "TWITCH", twitchId }) as UserRow | null;
+
+    return row ? { id: row.id } : null;
 }
 
-export function getKickUser(email: string): { id: number } | null {
+export function checkIfKickHasMainAccount(kickId: string): { id: number } | null {
     const row = db
         .query(
             `
-        SELECT
-            id
-        FROM user
-        WHERE kick_email = ?
-        `,
+            SELECT id
+            FROM user
+            WHERE main = :main
+            AND google_id = :kickId
+            `,
         )
-        .get(email) as UserRow | null;
-    if (row === null) {
-        return null;
-    }
-    return { id: row.id };
+        .get({ main: "KICK", kickId }) as UserRow | null;
+
+    return row ? { id: row.id } : null;
 }
 
 export function updateTokens(
@@ -196,17 +173,17 @@ export function overwriteUserInfo({
         WHERE id = ?
         `,
     ).run(
-        twitchId,
-        twitchAccessToken,
-        twitchRefreshToken,
-        twitchTokenExpiresAt,
-        googleId,
-        googleAccessToken,
-        googleTokenExpiresAt,
-        kickId,
-        kickAccessToken,
-        kickRefreshToken,
-        kickTokenExpiresAt,
+        twitchId ?? null,
+        twitchAccessToken ?? null,
+        twitchRefreshToken ?? null,
+        twitchTokenExpiresAt ?? null,
+        googleId ?? null,
+        googleAccessToken ?? null,
+        googleTokenExpiresAt ?? null,
+        kickId ?? null,
+        kickAccessToken ?? null,
+        kickRefreshToken ?? null,
+        kickTokenExpiresAt ?? null,
         userId,
     );
 }

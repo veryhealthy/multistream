@@ -1,5 +1,28 @@
 @import "tailwindcss";
+@plugin "@iconify/tailwind4";
 
 html {
-    font-size: 32px;
+    font-family: "Geist Pixel";
+    font-size: 18px;
+}
+
+@font-face {
+    font-family: "Geist Pixel";
+    src:
+        local(""),
+        url("/fonts/GeistPixel-Square.woff2") format("woff2"),
+        url("/fonts/GeistPixel-Square.ttf") format("truetype");
+}
+
+@theme {
+    --animate-grow: grow 1s ease-in-out infinite;
+
+    @keyframes grow: {
+        '0%': {
+            scalex: 0;
+        }
+        , '100%': {
+            scalex: 1;
+        }
+    }
 }

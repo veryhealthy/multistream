@@ -1,5 +1,5 @@
 import { generateSessionToken, createSession, setSessionTokenCookie } from "$lib/server/session";
-import { getGoogleUser, overwriteUserInfo, createUserWithGoogle } from "$lib/server/user";
+import { checkIfGoogleHasMainAccount, overwriteUserInfo, createUserWithGoogle } from "$lib/server/user";
 import { google } from "$lib/server/oauth";
 import { decodeIdToken } from "arctic";
 
@@ -41,8 +41,6 @@ export async function GET(event: RequestEvent): Promise<Response> {
     const accessToken = tokens.accessToken();
     const expiresAt = tokens.accessTokenExpiresAt().getTime();
 
-    const existingUser = getGoogleUser(email);
-
     if (event.locals.user) {
         // Logged-in user linking their Google account
         overwriteUserInfo({
@@ -57,16 +55,17 @@ export async function GET(event: RequestEvent): Promise<Response> {
         });
     }
 
-    if (existingUser !== null) {
-        // Returning user, update their Google tokens
+    const foundUser = checkIfGoogleHasMainAccount(googleUserId);
+
+    if (foundUser !== null) {
+        // overwrite in case google infos changed and to get fresh token ?
         overwriteUserInfo({
-            userId: existingUser.id,
-            googleId: googleUserId,
+            userId: foundUser.id,
             googleAccessToken: accessToken,
             googleTokenExpiresAt: expiresAt,
         });
         const sessionToken = generateSessionToken();
-        const session = createSession(sessionToken, existingUser.id);
+        const session = createSession(sessionToken, foundUser.id);
         setSessionTokenCookie(event, sessionToken, session.expiresAt);
         return new Response(null, {
             status: 302,

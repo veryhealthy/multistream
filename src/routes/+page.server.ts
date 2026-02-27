@@ -3,57 +3,20 @@ import { invalidateSession, deleteSessionTokenCookie } from "$lib/server/session
 import { KICK_CLIENT_ID, TWITCH_CLIENT_ID, GOOGLE_CLIENT_ID } from "$env/static/private";
 
 import type { Actions, PageServerLoad } from "./$types";
+import { getYoutubeData } from "$lib/server/youtube";
+import { getTwitchData } from "$lib/server/twitch";
+import { getKickData } from "$lib/server/kick";
 
 export const load: PageServerLoad = async ({ cookies, locals }) => {
     if (!locals.user) {
         return null;
     }
 
-    let kickInfo = { data: [{ stream_title: undefined }] };
-    let twitchInfo = { data: [{ title: undefined }] };
-    let youtubeInfo = { title: "" };
-
-    if (locals.user.kickId) {
-        const kickResponse = await fetch(`https://api.kick.com/public/v1/channels`, {
-            headers: {
-                Authorization: `Bearer ${locals.user.kickAccessToken}`,
-                "Client-ID": KICK_CLIENT_ID,
-            },
-        });
-
-        kickInfo = await kickResponse.json();
-    }
-
-    if (locals.user.twitchId) {
-        const response = await fetch(`https://api.twitch.tv/helix/channels?broadcaster_id=${locals.user.twitchId}`, {
-            headers: {
-                Authorization: `Bearer ${locals.user.twitchAccessToken}`,
-                "Client-ID": TWITCH_CLIENT_ID,
-            },
-        });
-        twitchInfo = await response.json();
-    }
-
-    if (locals.user.googleId) {
-        const response = await fetch(
-            `https://www.googleapis.com/youtube/v3/liveBroadcasts?mine=true&part=snippet,status,statistics`,
-            {
-                headers: {
-                    Authorization: `Bearer ${locals.user.googleAccessToken}`,
-                    "Client-ID": GOOGLE_CLIENT_ID,
-                },
-            },
-        );
-        const data = await response.json();
-        const activeBroadcast = data.items.find((b) => b.status.lifeCycleStatus === "live");
-        youtubeInfo.title = activeBroadcast.snippet.title;
-    }
-
     return {
         name: locals.user.name,
-        twitchStreamTitle: twitchInfo.data[0].title,
-        kickStreamTitle: kickInfo.data[0].stream_title,
-        youtubeStreamTitle: youtubeInfo.title,
+        twitch: getTwitchData(locals.user.twitchAccessToken, locals.user.twitchId),
+        youtube: getYoutubeData(locals.user.googleAccessToken),
+        kick: getKickData(locals.user.kickAccessToken),
         picture: locals.user.picture,
         twitchConnected: !!locals.user.twitchAccessToken,
         kickConnected: !!locals.user.kickAccessToken,
@@ -62,9 +25,12 @@ export const load: PageServerLoad = async ({ cookies, locals }) => {
 };
 
 export const actions: Actions = {
-    setName: async ({ locals, request }) => {
+    setStreamInfo: async ({ locals, request }) => {
         const data = await request.formData();
         const name = data.get("stream-name");
+        const description = data.get("stream-description");
+        const kickName = data.get("kick-name");
+        const twitchName = data.get("twitch-name");
 
         if (locals.user?.googleId) {
             let broadcastId;
@@ -82,7 +48,7 @@ export const actions: Actions = {
             broadcastId = activeBroadcast.id;
 
             // Update the title before you stream
-            await fetch("https://www.googleapis.com/youtube/v3/liveBroadcasts?part=snippet,status", {
+            const updateRes = await fetch("https://www.googleapis.com/youtube/v3/liveBroadcasts?part=snippet,status", {
                 method: "PUT",
                 headers: {
                     Authorization: `Bearer ${locals.user.googleAccessToken}`,
@@ -91,14 +57,16 @@ export const actions: Actions = {
                 body: JSON.stringify({
                     id: broadcastId,
                     snippet: {
-                        title: name,
-                        description: "Not yet implemented, subscribe please",
+                        ...activeBroadcast.snippet,
+                        title: name || activeBroadcast.snippet.title,
+                        description: description || activeBroadcast.snippet.description,
                     },
                     status: {
                         privacyStatus: "public",
                     },
                 }),
             });
+            const up = await updateRes.json();
         }
 
         if (locals.user?.twitchId) {
@@ -120,7 +88,7 @@ export const actions: Actions = {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    title: name,
+                    title: name || twitchName,
                 }),
             });
         }
@@ -133,7 +101,7 @@ export const actions: Actions = {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    stream_title: name,
+                    stream_title: name || kickName,
                 }),
             });
         }

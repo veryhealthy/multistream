@@ -1,8 +1,9 @@
 CREATE TABLE user (
     id INTEGER NOT NULL PRIMARY KEY,
-    google_id TEXT UNIQUE,
-    twitch_id TEXT UNIQUE,
-    kick_id TEXT UNIQUE,
+    main TEXT,
+    google_id TEXT,
+    twitch_id TEXT,
+    kick_id TEXT,
     google_email TEXT,
     twitch_email TEXT,
     kick_email TEXT,
@@ -17,7 +18,8 @@ CREATE TABLE user (
     kick_access_token TEXT,
     kick_refresh_token TEXT,
     kick_token_expires_at INTEGER,
-    CHECK (google_id IS NOT NULL OR twitch_id IS NOT NULL OR kick_id IS NOT NULL)
+    CHECK (google_id IS NOT NULL OR twitch_id IS NOT NULL OR kick_id IS NOT NULL),
+    CHECK (MAIN IN ("TWITCH", "KICK", "GOOGLE"))
 );
 
 CREATE TABLE session (

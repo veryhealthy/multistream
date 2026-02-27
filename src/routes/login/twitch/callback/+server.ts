@@ -1,5 +1,5 @@
 import { generateSessionToken, createSession, setSessionTokenCookie } from "$lib/server/session";
-import { getTwitchUser, overwriteUserInfo, createUserWithTwitch } from "$lib/server/user";
+import { checkIfTwitchHasMainAccount, overwriteUserInfo, createUserWithTwitch } from "$lib/server/user";
 import { twitch } from "$lib/server/oauth";
 import { decodeIdToken } from "arctic";
 import { TWITCH_CLIENT_ID } from "$env/static/private";
@@ -53,8 +53,6 @@ export async function GET(event: RequestEvent): Promise<Response> {
     const email = data.data[0].email;
     const pictureUrl = data.data[0].profile_image_url;
 
-    const existingUser = getTwitchUser(email);
-
     if (event.locals.user) {
         // Logged-in user linking their Twitch account
         overwriteUserInfo({
@@ -70,17 +68,18 @@ export async function GET(event: RequestEvent): Promise<Response> {
         });
     }
 
-    if (existingUser !== null) {
-        // Returning user, update their Twitch tokens
+    const foundUser = checkIfTwitchHasMainAccount(twitchUserId);
+
+    if (foundUser !== null) {
+        // overwrite in case kick infos changed and to get fresh token ?
         overwriteUserInfo({
-            userId: existingUser.id,
-            twitchId: twitchUserId,
+            userId: foundUser.id,
             twitchAccessToken: accessToken,
             twitchRefreshToken: refreshToken,
             twitchTokenExpiresAt: expiresAt,
         });
         const sessionToken = generateSessionToken();
-        const session = createSession(sessionToken, existingUser.id);
+        const session = createSession(sessionToken, foundUser.id);
         setSessionTokenCookie(event, sessionToken, session.expiresAt);
         return new Response(null, {
             status: 302,

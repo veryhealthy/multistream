@@ -1,5 +1,10 @@
 node_modules
 
+# sqlite stuff
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite
+
 # Output
 .output
 .vercel

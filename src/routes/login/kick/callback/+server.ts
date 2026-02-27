@@ -1,12 +1,11 @@
 import { generateSessionToken, createSession, setSessionTokenCookie } from "$lib/server/session";
-import { getKickUser, overwriteUserInfo, createUserWithKick } from "$lib/server/user";
+import { checkIfKickHasMainAccount, overwriteUserInfo, createUserWithKick } from "$lib/server/user";
 import { kick } from "$lib/server/oauth";
 
 import type { RequestEvent } from "@sveltejs/kit";
 import type { OAuth2Tokens } from "arctic";
 
 export async function GET(event: RequestEvent): Promise<Response> {
-    console.log("kick event", event);
     const code = event.url.searchParams.get("code");
     const state = event.url.searchParams.get("state");
     const storedState = event.cookies.get("kick_oauth_state") ?? null;
@@ -48,8 +47,6 @@ export async function GET(event: RequestEvent): Promise<Response> {
     const name = userData.data[0].name;
     const pictureUrl = userData.data[0].profile_picture;
 
-    const existingUser = getKickUser(email);
-
     if (event.locals.user) {
         // Logged-in user linking their Kick account
         overwriteUserInfo({
@@ -65,17 +62,18 @@ export async function GET(event: RequestEvent): Promise<Response> {
         });
     }
 
-    if (existingUser !== null) {
-        // Returning user, update their Kick tokens
+    const foundUser = checkIfKickHasMainAccount(kickUserId);
+
+    if (foundUser !== null) {
+        // overwrite in case kick infos changed and to get fresh token ?
         overwriteUserInfo({
-            userId: existingUser.id,
-            kickId: kickUserId,
+            userId: foundUser.id,
             kickAccessToken: accessToken,
             kickRefreshToken: refreshToken,
             kickTokenExpiresAt: expiresAt,
         });
         const sessionToken = generateSessionToken();
-        const session = createSession(sessionToken, existingUser.id);
+        const session = createSession(sessionToken, foundUser.id);
         setSessionTokenCookie(event, sessionToken, session.expiresAt);
         return new Response(null, {
             status: 302,

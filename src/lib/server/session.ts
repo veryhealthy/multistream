@@ -65,6 +65,7 @@ export function validateSessionToken(token: string): SessionValidationResult {
         kickRefreshToken: row.kick_refresh_token,
         kickTokenExpiresAt: row.kick_token_expires_at,
     };
+
     if (Date.now() >= session.expiresAt.getTime()) {
         db.query("DELETE FROM session WHERE id = ?").run(session.id);
         return { session: null, user: null };
