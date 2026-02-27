@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite";
 
-const db = new Database("/app/db.sqlite", { create: true });
+export const db = new Database("/app/db.sqlite", { create: true });
 
 // enable WAL mode
 db.run("PRAGMA journal_mode = WAL;");
@@ -34,5 +34,3 @@ db.run(`CREATE TABLE IF NOT EXISTS session (
     user_id INTEGER NOT NULL REFERENCES user(id),
     expires_at INTEGER NOT NULL
 )`);
-
-export default db;
