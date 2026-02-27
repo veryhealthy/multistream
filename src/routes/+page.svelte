@@ -5,7 +5,6 @@
     let { data }: PageProps = $props();
 
     let creating = $state(false);
-    let loading = true;
 </script>
 
 <div class="flex flex-row">
