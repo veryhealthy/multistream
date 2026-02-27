@@ -23,6 +23,9 @@ COPY --from=base /app/build ./build
 # Optional: Install only prod deps in final image (smaller, but rare external runtime deps in SvelteKit)
 # RUN bun install --frozen-lockfile --production
 
+# Create db file and give bun user ownership
+RUN touch /app/db.sqlite && chown -R bun:bun /app
+
 # Run as non-root user for security (bun user exists in official image)
 USER bun
 

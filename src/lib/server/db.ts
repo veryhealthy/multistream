@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite";
 
-export const db = new Database("mydb.sqlite");
+const db = new Database(process.env.PRODUCTION ? "/app/db.sqlite" : "db.sqlite", { create: true });
 
 // enable WAL mode
 db.run("PRAGMA journal_mode = WAL;");
