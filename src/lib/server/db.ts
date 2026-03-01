@@ -1,9 +1,13 @@
 import { Database } from "bun:sqlite";
 
-export const db = new Database("/app/db.sqlite", { create: true });
+export const db = new Database(process.env.NODE_ENV === "development" ? "db.sqlite" : "/app/db.sqlite", {
+    create: true,
+});
 
 // enable WAL mode
 db.run("PRAGMA journal_mode = WAL;");
+// foreign keys
+db.run("PRAGMA foreign_keys = ON");
 
 db.run(`CREATE TABLE IF NOT EXISTS user (
     id INTEGER NOT NULL PRIMARY KEY,
@@ -34,3 +38,19 @@ db.run(`CREATE TABLE IF NOT EXISTS session (
     user_id INTEGER NOT NULL REFERENCES user(id),
     expires_at INTEGER NOT NULL
 )`);
+
+db.run(`CREATE TABLE IF NOT EXISTS message (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    sender_id INTEGER NOT NULL,
+    platform_message_id TEXT NOT NULL,
+    username TEXT NOT NULL,
+    profile_picture TEXT,
+    content TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    source TEXT NOT NULL,
+    CHECK (source IN ('TWITCH', 'KICK', 'GOOGLE')),
+    FOREIGN KEY (user_id) REFERENCES user(id)
+)`);
+
+db.run(`CREATE INDEX IF NOT EXISTS idx_message_user_id ON message(user_id)`);

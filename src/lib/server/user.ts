@@ -93,7 +93,7 @@ export function checkIfTwitchHasMainAccount(twitchId: string): { id: number } | 
             SELECT id
             FROM user
             WHERE main = :main
-            AND google_id = :twitchId
+            AND twitch_id = :twitchId
             `,
         )
         .get({ main: "TWITCH", twitchId }) as UserRow | null;
@@ -108,7 +108,7 @@ export function checkIfKickHasMainAccount(kickId: string): { id: number } | null
             SELECT id
             FROM user
             WHERE main = :main
-            AND google_id = :kickId
+            AND kick_id = :kickId
             `,
         )
         .get({ main: "KICK", kickId }) as UserRow | null;

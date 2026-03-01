@@ -2,9 +2,11 @@
     import { enhance } from "$app/forms";
     import type { PageProps } from "./$types";
 
-    let { data }: PageProps = $props();
-
+    let { data, form }: PageProps = $props();
     let creating = $state(false);
+    $inspect(form);
+    const activeBroadcast = form && form.items.find((b: any) => b.status.lifeCycleStatus === "live");
+    console.log(activeBroadcast);
 </script>
 
 <div class="flex flex-row">
@@ -151,3 +153,12 @@
         {/if}
     </aside>
 </div>
+<form method="POST" action="?/getBroadcasts">
+    <button type="submit" class="flex items-center px-4 py-2 text-white cursor-pointer bg-indigo-400"
+        >Get broadcasts</button
+    >
+</form>
+
+{#if form?.success}
+    <p>{form.message}</p>
+{/if}

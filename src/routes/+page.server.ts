@@ -3,7 +3,7 @@ import { invalidateSession, deleteSessionTokenCookie } from "$lib/server/session
 import { KICK_CLIENT_ID, TWITCH_CLIENT_ID, GOOGLE_CLIENT_ID } from "$env/static/private";
 
 import type { Actions, PageServerLoad } from "./$types";
-import { getYoutubeData } from "$lib/server/youtube";
+import { getBroadcasts, getYoutubeData, setYoutubeStreamInfo } from "$lib/server/youtube";
 import { getTwitchData } from "$lib/server/twitch";
 import { getKickData } from "$lib/server/kick";
 
@@ -25,6 +25,10 @@ export const load: PageServerLoad = async ({ cookies, locals }) => {
 };
 
 export const actions: Actions = {
+    getBroadcasts: async ({ locals }) => {
+        const b = await getBroadcasts(locals.user?.googleAccessToken);
+        return b;
+    },
     setStreamInfo: async ({ locals, request }) => {
         const data = await request.formData();
         const name = data.get("stream-name");
@@ -32,42 +36,7 @@ export const actions: Actions = {
         const kickName = data.get("kick-name");
         const twitchName = data.get("twitch-name");
 
-        if (locals.user?.googleId) {
-            let broadcastId;
-            const response = await fetch(
-                `https://www.googleapis.com/youtube/v3/liveBroadcasts?mine=true&part=snippet,status,statistics`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${locals.user.googleAccessToken}`,
-                        "Client-ID": GOOGLE_CLIENT_ID,
-                    },
-                },
-            );
-            const data = await response.json();
-            const activeBroadcast = data.items.find((b: any) => b.status.lifeCycleStatus === "live");
-            broadcastId = activeBroadcast.id;
-
-            // Update the title before you stream
-            const updateRes = await fetch("https://www.googleapis.com/youtube/v3/liveBroadcasts?part=snippet,status", {
-                method: "PUT",
-                headers: {
-                    Authorization: `Bearer ${locals.user.googleAccessToken}`,
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    id: broadcastId,
-                    snippet: {
-                        ...activeBroadcast.snippet,
-                        title: name || activeBroadcast.snippet.title,
-                        description: description || activeBroadcast.snippet.description,
-                    },
-                    status: {
-                        privacyStatus: "public",
-                    },
-                }),
-            });
-            const up = await updateRes.json();
-        }
+        await setYoutubeStreamInfo(name, description, locals?.user?.googleAccessToken);
 
         if (locals.user?.twitchId) {
             const response = await fetch("https://api.twitch.tv/helix/users", {

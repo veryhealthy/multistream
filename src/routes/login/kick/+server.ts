@@ -6,7 +6,12 @@ import type { RequestEvent } from "@sveltejs/kit";
 export async function GET(event: RequestEvent): Promise<Response> {
     const state = generateState();
     const codeVerifier = generateCodeVerifier();
-    const url = kick.createAuthorizationURL(state, codeVerifier, ["user:read", "channel:read", "channel:write"]);
+    const url = kick.createAuthorizationURL(state, codeVerifier, [
+        "user:read",
+        "channel:read",
+        "channel:write",
+        "events:subscribe",
+    ]);
 
     event.cookies.set("kick_oauth_state", state, {
         path: "/",
